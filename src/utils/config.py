@@ -58,6 +58,7 @@ class RateLimitConfig(BaseModel):
 class ExchangeConfig(BaseModel):
     name: str = "binance"
     rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
+    fallback_sources: list[str] = Field(default_factory=lambda: ["yfinance"])
 
 
 class StorageConfig(BaseModel):

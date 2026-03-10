@@ -62,27 +62,40 @@ class DataFetcher:
         resolved_key = api_key or os.getenv("BINANCE_API_KEY")
         resolved_secret = api_secret or os.getenv("BINANCE_SECRET")
 
-        exchange_class = getattr(ccxt, exchange_name, None)
-        if exchange_class is None:
-            raise ValueError(f"Exchange '{exchange_name}' is not supported by ccxt.")
-
-        exchange_params: dict = {
-            "enableRateLimit": True,
-        }
-        if resolved_key and resolved_secret:
-            exchange_params["apiKey"] = resolved_key
-            exchange_params["secret"] = resolved_secret
-
-        self.exchange: ccxt.Exchange = exchange_class(exchange_params)
+        # Try to initialise the ccxt exchange; set to None on failure so
+        # the yfinance fallback can still run.
+        self.exchange: ccxt.Exchange | None = None
         self.exchange_name = exchange_name
+
+        try:
+            exchange_class = getattr(ccxt, exchange_name, None)
+            if exchange_class is None:
+                raise ValueError(f"Exchange '{exchange_name}' is not supported by ccxt.")
+
+            exchange_params: dict = {
+                "enableRateLimit": True,
+            }
+            if resolved_key and resolved_secret:
+                exchange_params["apiKey"] = resolved_key
+                exchange_params["secret"] = resolved_secret
+
+            self.exchange = exchange_class(exchange_params)
+        except Exception as exc:
+            logger.warning(
+                "Failed to initialise ccxt exchange '%s': %s. "
+                "Will rely on fallback data sources.",
+                exchange_name,
+                exc,
+            )
 
         # Rate-limit delay derived from config (seconds between requests).
         rps = self.config.exchange.rate_limit.requests_per_second
         self._request_delay: float = 1.0 / max(rps, 1)
 
         logger.info(
-            "DataFetcher initialised – exchange=%s, rate_limit=%.2f req/s",
+            "DataFetcher initialised – exchange=%s (available=%s), rate_limit=%.2f req/s",
             exchange_name,
+            self.exchange is not None,
             rps,
         )
 
@@ -116,6 +129,10 @@ class DataFetcher:
             Columns: ``timestamp, open, high, low, close, volume``.
             ``timestamp`` is of dtype ``datetime64[ns, UTC]``.
         """
+        if self.exchange is None:
+            logger.error("Cannot fetch via ccxt – exchange not initialised.")
+            return pd.DataFrame(columns=OHLCV_COLUMNS)
+
         since_ms = self.exchange.parse8601(f"{start_date}T00:00:00Z")
         end_ms = self.exchange.parse8601(f"{end_date}T23:59:59Z")
         limit = 1000  # most exchanges cap at 1 000 candles per request
@@ -245,7 +262,25 @@ class DataFetcher:
         pd.DataFrame
             The fetched DataFrame (also persisted to CSV).
         """
-        df = self.fetch_ohlcv(symbol, timeframe, start_date, end_date)
+        # 1) Try ccxt (primary source).
+        try:
+            df = self.fetch_ohlcv(symbol, timeframe, start_date, end_date)
+        except Exception as exc:
+            logger.warning("ccxt fetch failed for %s %s: %s", symbol, timeframe, exc)
+            df = pd.DataFrame(columns=OHLCV_COLUMNS)
+
+        # 2) Fallback to yfinance if ccxt returned nothing.
+        if df.empty and "yfinance" in self.config.exchange.fallback_sources:
+            logger.info("Trying yfinance fallback for %s %s …", symbol, timeframe)
+            try:
+                from src.data.yfinance_fetcher import YFinanceFetcher
+
+                yf_fetcher = YFinanceFetcher()
+                df = yf_fetcher.fetch_ohlcv(symbol, timeframe, start_date, end_date)
+            except Exception as exc:
+                logger.warning("yfinance fallback also failed: %s", exc)
+                df = pd.DataFrame(columns=OHLCV_COLUMNS)
+
         if not df.empty:
             self.save_raw(df, symbol, timeframe, output_dir=output_dir)
         return df

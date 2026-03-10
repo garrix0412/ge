@@ -10,6 +10,9 @@ exchange:
     retry_on_failure: true
     max_retries: 5
     retry_delay_seconds: 2
+  # Fallback data sources when primary exchange is unreachable.
+  fallback_sources:
+    - yfinance
 
 symbols:
   - BTC/USDT

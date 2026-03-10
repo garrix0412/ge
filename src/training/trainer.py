@@ -272,7 +272,10 @@ class Trainer:
 
             reg_out, cls_out = self.model.model(x_batch)
 
-            loss_reg = criterion_reg(reg_out, y_reg_batch)
+            # TFT returns (batch, horizon, n_quantiles); extract median for MSE.
+            reg_for_loss = reg_out[:, :, 1] if reg_out.ndim == 3 else reg_out
+
+            loss_reg = criterion_reg(reg_for_loss, y_reg_batch)
             loss_cls = criterion_cls(cls_out, y_cls_batch)
             loss = alpha * loss_reg + (1.0 - alpha) * loss_cls
 
@@ -321,7 +324,10 @@ class Trainer:
 
                 reg_out, cls_out = self.model.model(x_batch)
 
-                loss_reg = criterion_reg(reg_out, y_reg_batch)
+                # TFT returns (batch, horizon, n_quantiles); extract median for MSE.
+                reg_for_loss = reg_out[:, :, 1] if reg_out.ndim == 3 else reg_out
+
+                loss_reg = criterion_reg(reg_for_loss, y_reg_batch)
                 loss_cls = criterion_cls(cls_out, y_cls_batch)
                 loss = alpha * loss_reg + (1.0 - alpha) * loss_cls
 

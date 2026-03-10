@@ -330,6 +330,9 @@ class Experiment:
 
                 reg_out, cls_out = model.model(x_batch)
 
+                # TFT returns (batch, horizon, n_quantiles); extract median for eval.
+                if reg_out.ndim == 3:
+                    reg_out = reg_out[:, :, 1]
                 all_pred_reg.append(reg_out.cpu().numpy())
                 all_pred_cls.append(cls_out.cpu().numpy())
                 all_y_reg.append(y_reg_batch.numpy())

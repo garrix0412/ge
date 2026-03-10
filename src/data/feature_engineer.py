@@ -208,7 +208,11 @@ class FeatureEngineer:
 
     def _add_volume_change_pct(self, df: pd.DataFrame) -> pd.DataFrame:
         """Percentage change in volume."""
+        import numpy as np
+
         df["volume_change"] = df["volume"].pct_change()
+        # Replace inf/-inf from division by zero volume with 0.
+        df["volume_change"] = df["volume_change"].replace([np.inf, -np.inf], 0.0)
         logger.debug("Added volume change percentage.")
         return df
 
