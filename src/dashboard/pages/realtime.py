@@ -1,5 +1,5 @@
 """
-Real-Time Market page.
+Market Overview page.
 
 Displays candlestick OHLCV data, technical indicators (EMA, Bollinger Bands),
 RSI, MACD sub-plots, and key statistics cards.
@@ -7,12 +7,14 @@ RSI, MACD sub-plots, and key statistics cards.
 
 from __future__ import annotations
 
+from datetime import date
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
-from src.dashboard.components.charts import _apply_defaults, create_candlestick
+from src.dashboard.components.charts import _apply_defaults
 from src.dashboard.components.sidebar import render_sidebar
 from src.utils.constants import PROCESSED_DIR, PROCESSED_DATA_PATTERN
 
@@ -23,12 +25,9 @@ from src.utils.constants import PROCESSED_DIR, PROCESSED_DATA_PATTERN
 
 @st.cache_data(ttl=120, show_spinner="Loading market data ...")
 def _load_market_data(symbol: str, timeframe: str) -> pd.DataFrame | None:
-    """Load processed parquet data for *symbol* / *timeframe*.
-
-    Returns ``None`` when the file does not exist.
-    """
+    """Load processed parquet data for *symbol* / *timeframe*."""
     filename = PROCESSED_DATA_PATTERN.format(
-        symbol=symbol.replace("/", ""),
+        symbol=symbol.replace("/", "_"),
         timeframe=timeframe,
     )
     path = PROCESSED_DIR / filename
@@ -37,8 +36,13 @@ def _load_market_data(symbol: str, timeframe: str) -> pd.DataFrame | None:
 
     from src.utils.io import load_dataframe
 
-    df = load_dataframe(path)
-    return df
+    return load_dataframe(path)
+
+
+def _get_data_date_range(df: pd.DataFrame) -> tuple[date, date]:
+    """Return (min_date, max_date) from the dataframe index."""
+    idx = df.index if isinstance(df.index, pd.DatetimeIndex) else pd.to_datetime(df.get("timestamp", df.index))
+    return idx.min().date(), idx.max().date()
 
 
 def _filter_by_dates(df: pd.DataFrame, start, end) -> pd.DataFrame:
@@ -156,11 +160,26 @@ def _build_indicator_chart(
 
 
 def render() -> None:
-    """Main entry point for the Real-Time Market page."""
+    """Main entry point for the Market Overview page."""
 
-    st.header("Real-Time Market")
+    st.header("Market Overview")
+    st.caption("Live OHLCV data with technical indicators (EMA, Bollinger Bands, RSI, MACD).")
 
-    selections = render_sidebar()
+    # Load data first to determine date range before rendering sidebar
+    # We need a default symbol/timeframe to bootstrap
+    from src.utils.config import load_config
+
+    cfg = load_config()
+    _default_symbol = cfg.dashboard.defaults.symbol
+    _default_tf = cfg.dashboard.defaults.timeframe
+
+    # Pre-load to get date bounds
+    df_probe = _load_market_data(_default_symbol, _default_tf)
+    data_range = None
+    if df_probe is not None:
+        data_range = _get_data_date_range(df_probe)
+
+    selections = render_sidebar(page="market", data_date_range=data_range)
 
     symbol: str = selections["symbol"]
     timeframe: str = selections["timeframe"]
@@ -171,12 +190,16 @@ def render() -> None:
         st.info(
             f"No processed data found for **{symbol}** ({timeframe}).  "
             "Run the data pipeline first:\n\n"
-            "```bash\npython -m src.data.fetch\npython -m src.data.process\n```"
+            "```bash\npython scripts/run_pipeline.py --quick\n```"
         )
         return
 
-    # Filter by date range
-    df = _filter_by_dates(df, selections["date_start"], selections["date_end"])
+    # Clamp date filter to actual data bounds
+    actual_range = _get_data_date_range(df)
+    sel_start = max(selections["date_start"], actual_range[0])
+    sel_end = min(selections["date_end"], actual_range[1])
+
+    df = _filter_by_dates(df, sel_start, sel_end)
 
     if df.empty:
         st.warning("No data in the selected date range.")
@@ -187,14 +210,31 @@ def render() -> None:
     prev = df.iloc[-2] if len(df) > 1 else latest
 
     price = latest["close"]
-    change_24h = ((price - prev["close"]) / prev["close"]) * 100 if prev["close"] else 0.0
+    change = ((price - prev["close"]) / prev["close"]) * 100 if prev["close"] else 0.0
     vol = latest["volume"]
+    period_high = df["high"].max()
+    period_low = df["low"].min()
 
-    col1, col2, col3, col4 = st.columns(4)
+    # RSI status
+    rsi_val = latest.get("rsi", None)
+    if rsi_val is not None:
+        if rsi_val > 70:
+            rsi_status = "Overbought"
+        elif rsi_val < 30:
+            rsi_status = "Oversold"
+        else:
+            rsi_status = "Neutral"
+
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric("Symbol", symbol)
-    col2.metric("Current Price", f"${price:,.2f}", delta=f"{change_24h:+.2f}%")
-    col3.metric("24h Volume", f"{vol:,.0f}")
-    col4.metric("Data Points", f"{len(df):,}")
+    col2.metric("Current Price", f"${price:,.2f}", delta=f"{change:+.2f}%")
+    col3.metric("Volume", f"{vol:,.0f}")
+    col4.metric("Period High", f"${period_high:,.2f}")
+    col5.metric("Period Low", f"${period_low:,.2f}")
+    if rsi_val is not None:
+        col6.metric(f"RSI ({rsi_status})", f"{rsi_val:.1f}")
+    else:
+        col6.metric("Data Points", f"{len(df):,}")
 
     # ---- Indicator toggles ----
     tcol1, tcol2 = st.columns(2)
@@ -204,14 +244,3 @@ def render() -> None:
     # ---- Main chart ----
     chart = _build_indicator_chart(df, show_ema=show_ema, show_bb=show_bb)
     st.plotly_chart(chart, use_container_width=True)
-
-    # ---- Auto-refresh ----
-    if selections["auto_refresh"]:
-        from src.utils.config import load_config
-
-        cfg = load_config()
-        st.toast(f"Auto-refresh every {cfg.dashboard.refresh_interval_seconds}s")
-        import time
-
-        time.sleep(cfg.dashboard.refresh_interval_seconds)
-        st.rerun()
