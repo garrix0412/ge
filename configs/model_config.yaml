@@ -1,0 +1,89 @@
+# =============================================================================
+# Model Hyperparameter Configuration
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Common training settings shared across all models
+# ---------------------------------------------------------------------------
+common:
+  batch_size: 64
+  max_epochs: 100
+  patience: 10          # Early-stopping patience (epochs)
+  learning_rate: 0.001
+  seed: 42
+  num_workers: 4        # DataLoader worker processes
+  device: auto          # auto | cpu | cuda | mps
+
+# ---------------------------------------------------------------------------
+# LSTM
+# ---------------------------------------------------------------------------
+lstm:
+  hidden_size: 128
+  num_layers: 2
+  dropout: 0.2
+  bidirectional: false
+
+# ---------------------------------------------------------------------------
+# GRU
+# ---------------------------------------------------------------------------
+gru:
+  hidden_size: 128
+  num_layers: 2
+  dropout: 0.2
+
+# ---------------------------------------------------------------------------
+# Transformer (encoder-only, for time-series regression)
+# ---------------------------------------------------------------------------
+transformer:
+  d_model: 128
+  nhead: 8
+  num_layers: 4
+  dim_feedforward: 256
+  dropout: 0.1
+
+# ---------------------------------------------------------------------------
+# Temporal Fusion Transformer (TFT)
+# ---------------------------------------------------------------------------
+tft:
+  hidden_size: 128
+  num_attention_heads: 4
+  dropout: 0.1
+  quantiles:
+    - 0.1
+    - 0.5
+    - 0.9
+
+# ---------------------------------------------------------------------------
+# ARIMA (statistical baseline)
+# ---------------------------------------------------------------------------
+arima:
+  max_p: 5
+  max_d: 2
+  max_q: 5
+  seasonal: false
+
+# ---------------------------------------------------------------------------
+# XGBoost (tree-based baseline)
+# ---------------------------------------------------------------------------
+xgboost:
+  n_estimators: 500
+  max_depth: 6
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  early_stopping_rounds: 20
+
+# ---------------------------------------------------------------------------
+# Anomaly detection (VAE / Autoencoder)
+# ---------------------------------------------------------------------------
+anomaly:
+  hidden_size: 64
+  latent_dim: 32
+  num_layers: 2
+  threshold_sigma: 3.0  # Flag points beyond this many std devs
+
+# ---------------------------------------------------------------------------
+# Dual-head model (joint regression + classification)
+# ---------------------------------------------------------------------------
+dual_head:
+  alpha: 0.7  # Weight for regression loss; (1 - alpha) for classification loss

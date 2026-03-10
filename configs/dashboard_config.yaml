@@ -1,0 +1,67 @@
+# =============================================================================
+# Dashboard Configuration
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# General
+# ---------------------------------------------------------------------------
+refresh_interval_seconds: 60
+theme: dark                    # dark | light
+
+# ---------------------------------------------------------------------------
+# Defaults shown on first load
+# ---------------------------------------------------------------------------
+defaults:
+  symbol: BTC/USDT
+  model: lstm
+  timeframe: 1h
+  lookback_window: 48
+  forecast_horizon: 4
+
+# ---------------------------------------------------------------------------
+# Layout
+# ---------------------------------------------------------------------------
+layout:
+  page_title: "Crypto Prediction Dashboard"
+  sidebar_width: 300
+  chart_height: 600
+
+  sections:
+    - name: Price & Predictions
+      type: candlestick
+      enabled: true
+
+    - name: Technical Indicators
+      type: overlay
+      enabled: true
+
+    - name: Anomaly Detection
+      type: scatter
+      enabled: true
+
+    - name: Model Comparison
+      type: bar
+      enabled: true
+
+    - name: Performance Metrics
+      type: table
+      enabled: true
+
+# ---------------------------------------------------------------------------
+# Available models (displayed in the sidebar selector)
+# ---------------------------------------------------------------------------
+available_models:
+  - lstm
+  - gru
+  - transformer
+  - tft
+  - arima
+  - xgboost
+  - dual_head
+
+# ---------------------------------------------------------------------------
+# Available symbols (displayed in the sidebar selector)
+# ---------------------------------------------------------------------------
+available_symbols:
+  - BTC/USDT
+  - ETH/USDT

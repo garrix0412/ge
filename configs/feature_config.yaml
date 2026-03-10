@@ -1,0 +1,51 @@
+# =============================================================================
+# Feature Engineering Configuration
+# =============================================================================
+
+target_column: close
+
+# ---------------------------------------------------------------------------
+# Technical indicator parameters
+# ---------------------------------------------------------------------------
+indicators:
+  rsi:
+    period: 14
+
+  macd:
+    fast_period: 12
+    slow_period: 26
+    signal_period: 9
+
+  bollinger_bands:
+    period: 20
+    std_dev: 2
+
+  ema:
+    periods:
+      - 7
+      - 25
+      - 99
+
+  atr:
+    period: 14
+
+# ---------------------------------------------------------------------------
+# Scaling
+# ---------------------------------------------------------------------------
+scaler_type: minmax  # Options: minmax, standard, robust
+
+# ---------------------------------------------------------------------------
+# Sequence construction
+# ---------------------------------------------------------------------------
+# Number of past time-steps the model sees as input.
+lookback_windows:
+  - 24
+  - 48
+  - 96
+
+# Number of future time-steps the model predicts.
+forecast_horizons:
+  - 1
+  - 4
+  - 12
+  - 24

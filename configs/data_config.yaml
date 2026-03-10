@@ -1,0 +1,37 @@
+# =============================================================================
+# Data Collection Configuration
+# =============================================================================
+
+exchange:
+  name: binance
+  # Rate-limit settings to avoid 429 errors from the exchange API.
+  rate_limit:
+    requests_per_second: 10
+    retry_on_failure: true
+    max_retries: 5
+    retry_delay_seconds: 2
+
+symbols:
+  - BTC/USDT
+  - ETH/USDT
+
+timeframes:
+  - 1h
+  - 4h
+
+date_range:
+  start: "2021-01-01"
+  end: "2024-12-31"
+
+# Storage paths (relative to project root).
+storage:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  sequences_dir: data/sequences
+  scalers_dir: data/scalers
+
+# Train / validation / test split ratios (must sum to 1.0).
+split:
+  train: 0.7
+  val: 0.15
+  test: 0.15
