@@ -112,7 +112,12 @@ def render() -> None:
     df = _load_processed(symbol, timeframe)
     if df is not None:
         st.markdown("#### Price Context")
-        timestamps = df.index if isinstance(df.index, pd.DatetimeIndex) else pd.RangeIndex(len(df))
+        if isinstance(df.index, pd.DatetimeIndex):
+            timestamps = df.index
+        elif "timestamp" in df.columns:
+            timestamps = pd.to_datetime(df["timestamp"])
+        else:
+            timestamps = pd.RangeIndex(len(df))
 
         fig = go.Figure()
         fig.add_trace(go.Scatter(

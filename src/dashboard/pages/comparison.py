@@ -119,13 +119,14 @@ def render() -> None:
 
     # ---- Filters ----
     st.subheader("Filters")
-    fcol1, fcol2, fcol3, fcol4, fcol5 = st.columns(5)
+    fcol1, fcol2, fcol3 = st.columns(3)
+    fcol4, fcol5 = st.columns(2)
 
     available_models = sorted(all_data["model"].dropna().unique()) if "model" in all_data.columns else []
     available_symbols = sorted(all_data["symbol"].dropna().unique()) if "symbol" in all_data.columns else []
     available_tfs = sorted(all_data["timeframe"].dropna().unique()) if "timeframe" in all_data.columns else []
-    available_lbs = sorted(all_data["lookback"].dropna().unique()) if "lookback" in all_data.columns else []
-    available_hs = sorted(all_data["horizon"].dropna().unique()) if "horizon" in all_data.columns else []
+    available_lbs = sorted(int(x) for x in all_data["lookback"].dropna().unique()) if "lookback" in all_data.columns else []
+    available_hs = sorted(int(x) for x in all_data["horizon"].dropna().unique()) if "horizon" in all_data.columns else []
 
     selected_models = fcol1.multiselect("Model", options=available_models, default=available_models)
     selected_symbols = fcol2.multiselect("Symbol", options=available_symbols, default=available_symbols)

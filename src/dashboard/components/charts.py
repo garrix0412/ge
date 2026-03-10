@@ -19,9 +19,9 @@ from plotly.subplots import make_subplots
 
 _LAYOUT_DEFAULTS = dict(
     template="plotly_dark",
-    margin=dict(l=40, r=20, t=50, b=30),
+    margin=dict(l=40, r=20, t=80, b=30),
     hovermode="x unified",
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    legend=dict(orientation="h", yanchor="bottom", y=1.06, xanchor="right", x=1),
     font=dict(family="Inter, sans-serif", size=12),
 )
 

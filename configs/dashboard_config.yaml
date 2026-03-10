@@ -15,8 +15,8 @@ defaults:
   symbol: BTC/USDT
   model: lstm
   timeframe: 1h
-  lookback_window: 48
-  forecast_horizon: 4
+  lookback_window: 24
+  forecast_horizon: 1
 
 # ---------------------------------------------------------------------------
 # Layout

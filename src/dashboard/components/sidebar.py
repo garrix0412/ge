@@ -112,14 +112,15 @@ def render_sidebar(
         )
 
     # -- Date range (market and "all" only) --
-    date_start = date(2024, 1, 1)
-    date_end = date(2024, 12, 31)
+    today = date.today()
+    date_start = today - timedelta(days=90)
+    date_end = today
     if page in ("market", "all"):
         st.sidebar.subheader("Date Range")
         if data_date_range is not None:
             default_start, default_end = data_date_range
         else:
-            default_end = date(2024, 12, 31)
+            default_end = today
             default_start = default_end - timedelta(days=90)
 
         date_start = st.sidebar.date_input("Start Date", value=default_start)

@@ -41,13 +41,23 @@ def _load_market_data(symbol: str, timeframe: str) -> pd.DataFrame | None:
 
 def _get_data_date_range(df: pd.DataFrame) -> tuple[date, date]:
     """Return (min_date, max_date) from the dataframe index."""
-    idx = df.index if isinstance(df.index, pd.DatetimeIndex) else pd.to_datetime(df.get("timestamp", df.index))
+    if isinstance(df.index, pd.DatetimeIndex):
+        idx = df.index
+    else:
+        idx = pd.DatetimeIndex(pd.to_datetime(df.get("timestamp", df.index)))
+    if idx.tz is not None:
+        idx = idx.tz_localize(None)
     return idx.min().date(), idx.max().date()
 
 
 def _filter_by_dates(df: pd.DataFrame, start, end) -> pd.DataFrame:
     """Narrow *df* to the selected date window."""
-    idx = df.index if isinstance(df.index, pd.DatetimeIndex) else pd.to_datetime(df.get("timestamp", df.index))
+    if isinstance(df.index, pd.DatetimeIndex):
+        idx = df.index
+    else:
+        idx = pd.DatetimeIndex(pd.to_datetime(df.get("timestamp", df.index)))
+    if idx.tz is not None:
+        idx = idx.tz_localize(None)
     mask = (idx >= pd.Timestamp(start)) & (idx <= pd.Timestamp(end) + pd.Timedelta(days=1))
     return df.loc[mask]
 
@@ -58,7 +68,12 @@ def _build_indicator_chart(
     show_bb: bool,
 ) -> go.Figure:
     """Candlestick + optional EMA / Bollinger Band overlays, with RSI and MACD subplots."""
-    timestamps = df.index if isinstance(df.index, pd.DatetimeIndex) else df.get("timestamp", df.index)
+    if isinstance(df.index, pd.DatetimeIndex):
+        timestamps = df.index
+    elif "timestamp" in df.columns:
+        timestamps = pd.to_datetime(df["timestamp"])
+    else:
+        timestamps = df.index
 
     fig = make_subplots(
         rows=4,
@@ -225,10 +240,11 @@ def render() -> None:
         else:
             rsi_status = "Neutral"
 
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3 = st.columns(3)
     col1.metric("Symbol", symbol)
     col2.metric("Current Price", f"${price:,.2f}", delta=f"{change:+.2f}%")
     col3.metric("Volume", f"{vol:,.0f}")
+    col4, col5, col6 = st.columns(3)
     col4.metric("Period High", f"${period_high:,.2f}")
     col5.metric("Period Low", f"${period_low:,.2f}")
     if rsi_val is not None:
